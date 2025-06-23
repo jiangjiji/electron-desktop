@@ -1,8 +1,11 @@
 import { electronAPI } from "@electron-toolkit/preload";
 import { contextBridge } from "electron";
+const { ipcRenderer } = require("electron");
 
 // Custom APIs for renderer
-const api = {};
+const api = {
+	getDesktopFiles: () => ipcRenderer.invoke("getDesktopFiles"),
+};
 
 // Use `contextBridge` APIs to expose Electron APIs to
 // renderer only if context isolation is enabled, otherwise
