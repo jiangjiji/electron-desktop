@@ -1,97 +1,84 @@
-import { useEffect, useRef } from "react";
-import { useDrag, useDrop } from "react-dnd";
-import { Card } from "@/components/ui/card";
-
-export interface DesktopFile {
-	name: string;
-	path: string;
-	isDirectory: boolean;
-	isFile: boolean;
-	ext: string;
-	icon?: string;
-}
+import { useEffect, useRef } from 'react'
+import { useDrag, useDrop } from 'react-dnd'
+import { DesktopFile } from '~/desktopData'
 
 export interface Group {
-	id: string;
-	name: string;
-	files: DesktopFile[];
+  id: string
+  name: string
+  files: DesktopFile[]
 }
 
 const ItemType = {
-	FILE: "file",
-};
+  FILE: 'file'
+}
 
 function FileIcon({ file }: { file: DesktopFile }) {
-	if (file.icon) {
-		return (
-			<div className="flex flex-col items-center w-20 cursor-pointer select-none">
-				<img src={file.icon} alt="icon" className="w-10 h-10 mb-1" />
-				<div className="text-xs text-center break-all max-w-16">{file.name}</div>
-			</div>
-		);
-	}
-	const icon = file.isDirectory ? "📁" : file.ext === "lnk" ? "🔗" : "📄";
-	return (
-		<div className="flex flex-col items-center w-20 cursor-pointer select-none">
-			<div className="text-3xl mb-1">{icon}</div>
-			<div className="text-xs text-center break-all max-w-16">{file.name}</div>
-		</div>
-	);
+  const fileIcon = file.icon
+    ? file.icon
+    : file.isDirectory
+      ? '📁'
+      : file.ext === 'lnk'
+        ? '🔗'
+        : '📄'
+
+  return (
+    <div className="flex w-20 cursor-pointer flex-col items-center select-none">
+      <img src={fileIcon} alt="icon" className="mb-1 h-10 w-10" />
+      <div className="max-w-16 text-center text-xs break-all">{file.name}</div>
+    </div>
+  )
 }
 
-function DraggableFile({
-	file,
-	index,
-	moveFile,
-}: {
-	file: DesktopFile;
-	index: number;
-	moveFile: (from: number, to: number) => void;
+function DraggableFileIcon(props: {
+  file: DesktopFile
+  index: number
+  moveFile: (from: number, to: number) => void
 }) {
-	const ref = useRef<HTMLDivElement>(null);
-	const [{ isDragging }, drag] = useDrag(
-		() => ({
-			type: ItemType.FILE,
-			item: { index },
-			collect: (monitor) => ({
-				isDragging: monitor.isDragging(),
-			}),
-		}),
-		[index],
-	);
+  const ref = useRef<HTMLDivElement>(null)
 
-	const [, drop] = useDrop({
-		accept: ItemType.FILE,
-		hover: (item: { index: number }) => {
-			if (item.index !== index) {
-				moveFile(item.index, index);
-				item.index = index;
-			}
-		},
-	});
+  const [{ isDragging }, drag] = useDrag(
+    () => ({
+      type: ItemType.FILE,
+      item: { index: props.index },
+      collect: (monitor) => ({
+        isDragging: monitor.isDragging()
+      })
+    }),
+    [props.index]
+  )
 
-	useEffect(() => {
-		if (ref.current) {
-			drag(drop(ref.current));
-		}
-	}, [ref, drag, drop]);
+  const [, drop] = useDrop({
+    accept: ItemType.FILE,
+    hover: (item: { index: number }) => {
+      if (item.index !== props.index) {
+        props.moveFile(item.index, props.index)
+        item.index = props.index
+      }
+    }
+  })
 
-	return (
-		<div ref={ref} style={{ opacity: isDragging ? 0.5 : 1 }}>
-			<FileIcon file={file} />
-		</div>
-	);
+  useEffect(() => {
+    if (ref.current) {
+      drag(drop(ref.current))
+    }
+  }, [ref, drag, drop])
+
+  return (
+    <div ref={ref} style={{ opacity: isDragging ? 0.5 : 1 }}>
+      <FileIcon file={props.file} />
+    </div>
+  )
 }
 
-export function FencesBox({ group, moveFile }: { group: Group; moveFile: (from: number, to: number) => void }) {
-	return (
-		<Card className="w-[380px] min-h-[220px] p-4 m-4 bg-white/80 shadow-lg border border-gray-200">
-			<div className="font-bold mb-2">{group.name}</div>
-			<div className="flex flex-wrap gap-2">
-				{group.files.map((file, idx) => (
-					<DraggableFile key={file.path} file={file} index={idx} moveFile={moveFile} />
-				))}
-			</div>
-		</Card>
-	);
+export function FencesBox(props: { group: Group; moveFile: (from: number, to: number) => void }) {
+  return (
+    <div className="m-4 h-[220px] w-[380px] rounded-xl border border-gray-200 bg-white/80 p-4 shadow">
+      <div className="mb-2 font-bold">{props.group.name}</div>
+      <div className="flex flex-wrap gap-2">
+        {props.group.files.map((file, idx) => (
+          <DraggableFileIcon key={file.path} file={file} index={idx} moveFile={props.moveFile} />
+        ))}
+      </div>
+    </div>
+  )
 }

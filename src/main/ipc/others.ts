@@ -1,6 +1,6 @@
-import { ipcMain } from "electron";
+import { ipcMain } from 'electron'
 // IPC test
 
 export function registerOthersIpc() {
-    ipcMain.on("ping", () => console.log("pong"));
+  ipcMain.on('ping', () => console.log('pong'))
 }

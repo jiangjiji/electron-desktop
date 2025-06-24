@@ -1,8 +1,8 @@
-import { registerDesktopIpc } from "./desktop";
-import { registerOthersIpc } from "./others";
+import { registerDesktopIpc } from './desktop'
+import { registerOthersIpc } from './others'
 
 export function registerAllIpc() {
-  registerDesktopIpc();
+  registerDesktopIpc()
 
-  registerOthersIpc();
-} 
+  registerOthersIpc()
+}

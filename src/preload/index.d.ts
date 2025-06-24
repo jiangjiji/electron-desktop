@@ -1,21 +1,13 @@
-import { ElectronAPI } from "@electron-toolkit/preload";
-
-interface DesktopFile {
-	name: string;
-	path: string;
-	isDirectory: boolean;
-	isFile: boolean;
-	ext: string;
-	icon: string;
-}
+import type { ElectronAPI } from '@electron-toolkit/preload'
+import { DesktopFile } from '~/desktopData'
 
 interface DesktopApi {
-	getDesktopFiles: () => Promise<DesktopFile[]>;
+  getDesktopFiles: () => Promise<DesktopFile[]>
 }
 
 declare global {
-	interface Window {
-		electron: ElectronAPI;
-		api: DesktopApi;
-	}
+  interface Window {
+    electron: ElectronAPI
+    api: DesktopApi
+  }
 }

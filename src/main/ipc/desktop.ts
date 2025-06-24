@@ -1,49 +1,54 @@
-import { app, ipcMain, shell } from "electron";
-import { readdirSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { app, ipcMain, shell } from 'electron'
+import { readdirSync, statSync } from 'node:fs'
+import { join } from 'node:path'
+import { DesktopFile } from '~/desktopData'
+import { extractFileExt } from '../common/sysUtils'
 
 export function registerDesktopIpc() {
-  ipcMain.handle("getDesktopFiles", async () => {
-    const desktopPath = app.getPath("desktop");
-    const files: any[] = [];
+  ipcMain.handle('getDesktopFiles', async () => {
+    const desktopPath = app.getPath('desktop')
+    const files: Array<DesktopFile> = []
     try {
-      const names = readdirSync(desktopPath);
+      const names = readdirSync(desktopPath)
       for (const name of names) {
-        const fullPath = join(desktopPath, name);
-        const stat = statSync(fullPath);
-        let iconDataUrl = "";
-        let ext = name.split('.').pop()?.toLowerCase() || "";
-        let iconTargetPath = fullPath;
-
-        // 如果是.lnk，尝试解析目标路径
-        if (ext === "lnk") {
-          try {
-            const shortcut = shell.readShortcutLink(fullPath);
-            if (shortcut.target) {
-              iconTargetPath = shortcut.target;
-            }
-          } catch {
-            // 解析失败，iconTargetPath 仍为 .lnk 本身
-          }
-        }
-
-        try {
-          const icon = await app.getFileIcon(iconTargetPath, { size: "normal" });
-          iconDataUrl = icon.toDataURL();
-        } catch {}
-
+        const fullPath = join(desktopPath, name)
+        const stat = statSync(fullPath)
+        const ext = extractFileExt(name)
+        const iconTargetPath = getInkTargetPath(fullPath, ext)
+        const iconDataUrl = await getIconDataUrl(iconTargetPath)
         files.push({
           name,
           path: fullPath,
           isDirectory: stat.isDirectory(),
           isFile: stat.isFile(),
           ext,
-          icon: iconDataUrl,
-        });
+          icon: iconDataUrl
+        })
       }
     } catch (e) {
-      // 读取目录失败
+      // handle error
     }
-    return files;
-  });
-} 
+    return files
+  })
+}
+
+function getInkTargetPath(fullPath: string, ext: string) {
+  if (ext === 'lnk') {
+    try {
+      const shortcut = shell.readShortcutLink(fullPath)
+      return shortcut.target || fullPath
+    } catch {
+      return fullPath
+    }
+  }
+  return fullPath
+}
+
+async function getIconDataUrl(iconTargetPath: string) {
+  try {
+    const icon = await app.getFileIcon(iconTargetPath, { size: 'normal' })
+    return icon.toDataURL()
+  } catch {
+    return ''
+  }
+}
