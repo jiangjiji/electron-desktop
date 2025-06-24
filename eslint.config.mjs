@@ -3,14 +3,14 @@ import tseslint from '@electron-toolkit/eslint-config-ts'
 import eslintPluginReact from 'eslint-plugin-react'
 import eslintPluginReactHooks from 'eslint-plugin-react-hooks'
 import eslintPluginReactRefresh from 'eslint-plugin-react-refresh'
-import tailwind from 'eslint-plugin-tailwindcss'
+import eslintPluginTailwind from 'eslint-plugin-tailwindcss'
 
 export default tseslint.config(
   { ignores: ['**/node_modules', '**/dist', '**/out'] },
   tseslint.configs.recommended,
   eslintPluginReact.configs.flat.recommended,
   eslintPluginReact.configs.flat['jsx-runtime'],
-  tailwind.configs['flat/recommended'],
+  eslintPluginTailwind.configs['flat/recommended'],
   {
     settings: {
       react: {
