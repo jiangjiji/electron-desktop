@@ -1,3 +1,4 @@
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { useEffect, useRef } from 'react'
 import { useDrag, useDrop } from 'react-dnd'
 import { DesktopFile } from '~/desktopData'
@@ -72,13 +73,15 @@ function DraggableFileIcon(props: {
 
 export function FencesBox(props: { group: Group; moveFile: (from: number, to: number) => void }) {
   return (
-    <div className="m-4 h-[220px] w-[380px] rounded-xl border border-gray-200 bg-white/80 p-4 shadow">
-      <div className="mb-2 font-bold">{props.group.name}</div>
-      <div className="flex flex-wrap gap-2">
-        {props.group.files.map((file, idx) => (
-          <DraggableFileIcon key={file.path} file={file} index={idx} moveFile={props.moveFile} />
-        ))}
-      </div>
+    <div className="flex h-[220px] w-[380px] flex-col rounded-xl bg-white/30 shadow backdrop-blur-md">
+      <div className="m-4 mb-2 font-bold">{props.group.name}</div>
+      <ScrollArea className="flex-grow overflow-auto">
+        <div className="flex h-full flex-wrap gap-2">
+          {props.group.files.map((file, idx) => (
+            <DraggableFileIcon key={file.path} file={file} index={idx} moveFile={props.moveFile} />
+          ))}
+        </div>
+      </ScrollArea>
     </div>
   )
 }

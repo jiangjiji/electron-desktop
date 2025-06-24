@@ -118,3 +118,8 @@
     @apply bg-background text-foreground;
   }
 }
+
+body,
+#root {
+  background: transparent !important;
+}
