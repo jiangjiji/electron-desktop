@@ -6,30 +6,41 @@ import { extractFileExt } from '../common/sysUtils'
 
 export function registerDesktopIpc() {
   ipcMain.handle('getDesktopFiles', async () => {
+    const desktopFiles: DesktopFile[] = []
+
     const desktopPath = app.getPath('desktop')
-    const files: Array<DesktopFile> = []
-    try {
-      const names = readdirSync(desktopPath)
-      for (const name of names) {
-        const fullPath = join(desktopPath, name)
-        const stat = statSync(fullPath)
-        const ext = extractFileExt(name)
-        const iconTargetPath = getInkTargetPath(fullPath, ext)
-        const iconDataUrl = await getIconDataUrl(iconTargetPath)
-        files.push({
-          name,
-          path: fullPath,
-          isDirectory: stat.isDirectory(),
-          isFile: stat.isFile(),
-          ext,
-          icon: iconDataUrl
-        })
-      }
-    } catch (e) {
-      // handle error
-    }
-    return files
+    desktopFiles.push(...(await searchDesktopFile(desktopPath)))
+
+    const commonDesktopPath = 'C:\\Users\\Public\\Desktop'
+    desktopFiles.push(...(await searchDesktopFile(commonDesktopPath)))
+
+    return desktopFiles
   })
+}
+
+async function searchDesktopFile(desktopPath: string) {
+  const files: DesktopFile[] = []
+  try {
+    const names = readdirSync(desktopPath)
+    for (const name of names) {
+      const fullPath = join(desktopPath, name)
+      const stat = statSync(fullPath)
+      const ext = extractFileExt(name)
+      const iconTargetPath = getInkTargetPath(fullPath, ext)
+      const iconDataUrl = await getIconDataUrl(iconTargetPath)
+      files.push({
+        name,
+        path: fullPath,
+        isDirectory: stat.isDirectory(),
+        isFile: stat.isFile(),
+        ext,
+        icon: iconDataUrl
+      })
+    }
+  } catch (e) {
+    // handle error
+  }
+  return files
 }
 
 function getInkTargetPath(fullPath: string, ext: string) {

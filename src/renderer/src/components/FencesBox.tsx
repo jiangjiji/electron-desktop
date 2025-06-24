@@ -1,87 +1,84 @@
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { useEffect, useRef } from 'react'
-import { useDrag, useDrop } from 'react-dnd'
+import { useRef } from 'react'
+import { Rnd } from 'react-rnd'
 import { DesktopFile } from '~/desktopData'
+import { FileIcon } from './FileIcon'
 
-export interface Group {
+export interface BoxPosition {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+export interface BoxConfig {
   id: string
   name: string
   files: DesktopFile[]
+  position: BoxPosition
 }
 
-const ItemType = {
-  FILE: 'file'
-}
-
-function FileIcon({ file }: { file: DesktopFile }) {
-  const fileIcon = file.icon
-    ? file.icon
-    : file.isDirectory
-      ? '📁'
-      : file.ext === 'lnk'
-        ? '🔗'
-        : '📄'
-
-  return (
-    <div className="flex w-20 cursor-pointer flex-col items-center select-none">
-      <img src={fileIcon} alt="icon" className="mb-1 h-10 w-10" />
-      <div className="max-w-16 text-center text-xs break-all">{file.name}</div>
-    </div>
-  )
-}
-
-function DraggableFileIcon(props: {
-  file: DesktopFile
-  index: number
+export function FencesBox(props: {
+  boxConfig: BoxConfig
   moveFile: (from: number, to: number) => void
+  onBoxChange: (id: string, position: BoxPosition) => { x: number; y: number }
+  onBoxStop: () => void
 }) {
-  const ref = useRef<HTMLDivElement>(null)
-
-  const [{ isDragging }, drag] = useDrag(
-    () => ({
-      type: ItemType.FILE,
-      item: { index: props.index },
-      collect: (monitor) => ({
-        isDragging: monitor.isDragging()
-      })
-    }),
-    [props.index]
-  )
-
-  const [, drop] = useDrop({
-    accept: ItemType.FILE,
-    hover: (item: { index: number }) => {
-      if (item.index !== props.index) {
-        props.moveFile(item.index, props.index)
-        item.index = props.index
-      }
-    }
-  })
-
-  useEffect(() => {
-    if (ref.current) {
-      drag(drop(ref.current))
-    }
-  }, [ref, drag, drop])
+  const { boxConfig } = props
+  const rndRef = useRef<Rnd>(null)
 
   return (
-    <div ref={ref} style={{ opacity: isDragging ? 0.5 : 1 }}>
-      <FileIcon file={props.file} />
-    </div>
-  )
-}
+    <Rnd
+      ref={rndRef}
+      size={{ width: boxConfig.position.width, height: boxConfig.position.height }}
+      position={{ x: boxConfig.position.x, y: boxConfig.position.y }}
+      minWidth={200}
+      minHeight={120}
+      bounds="window"
+      enableResizing={{
+        top: true,
+        right: true,
+        bottom: true,
+        left: true,
+        topRight: true,
+        bottomRight: true,
+        bottomLeft: true,
+        topLeft: true
+      }}
+      dragHandleClassName="fencesbox-drag-handle"
+      onDrag={(e, data) => {
+        boxConfig.position = { ...boxConfig.position, x: data.x, y: data.y }
+        const { x, y } = props.onBoxChange(boxConfig.id, boxConfig.position)
+        boxConfig.position = { ...boxConfig.position, x, y }
 
-export function FencesBox(props: { group: Group; moveFile: (from: number, to: number) => void }) {
-  return (
-    <div className="flex h-[220px] w-[380px] flex-col rounded-xl bg-white/30 shadow backdrop-blur-md">
-      <div className="m-4 mb-2 font-bold">{props.group.name}</div>
-      <ScrollArea className="flex-grow overflow-auto">
-        <div className="flex h-full flex-wrap gap-2">
-          {props.group.files.map((file, idx) => (
-            <DraggableFileIcon key={file.path} file={file} index={idx} moveFile={props.moveFile} />
-          ))}
+        rndRef.current?.updatePosition({ x, y })
+      }}
+      onResize={(e, dirction, elementRef, delta, position) => {
+        boxConfig.position = {
+          ...position,
+          width: elementRef.offsetWidth,
+          height: elementRef.offsetHeight
+        }
+        const { x, y } = props.onBoxChange(boxConfig.id, boxConfig.position)
+
+        boxConfig.position = { ...boxConfig.position, x, y }
+        rndRef.current?.updatePosition({ x, y })
+      }}
+      onDragStop={props.onBoxStop}
+      onResizeStop={props.onBoxStop}
+    >
+      <div className="flex h-full flex-col overflow-hidden rounded-xl bg-black/15 shadow backdrop-blur-lg">
+        <div className="fencesbox-drag-handle flex cursor-move items-center justify-center bg-black/30 p-2 font-bold text-white select-none">
+          {boxConfig.name}
         </div>
-      </ScrollArea>
-    </div>
+        <ScrollArea className="flex-grow overflow-auto">
+          <div className="flex h-full flex-wrap gap-2">
+            {boxConfig.files.map((file, idx) => (
+              <FileIcon key={file.path} file={file} index={idx} moveFile={props.moveFile} />
+            ))}
+          </div>
+        </ScrollArea>
+      </div>
+    </Rnd>
   )
 }
