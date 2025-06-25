@@ -1,8 +1,8 @@
-import { app, ipcMain, shell } from 'electron'
-import { readdirSync, statSync } from 'node:fs'
+import { app, ipcMain, shell} from 'electron'
+import { readdirSync, statSync, readFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { DesktopFile } from '~/desktopData'
-import { extractFileExt } from '../common/sysUtils'
+import { extractFileExt, getRegistryValue } from '../common/sysUtils'
 
 export function registerDesktopIpc() {
   ipcMain.handle('getDesktopFiles', async () => {
@@ -15,6 +15,23 @@ export function registerDesktopIpc() {
     desktopFiles.push(...(await searchDesktopFile(commonDesktopPath)))
 
     return desktopFiles
+  })
+
+  ipcMain.handle('getDesktopBackground', async () => {
+    try {
+      const wallpaperPath = await getWallpaperPath()
+      if (wallpaperPath && existsSync(wallpaperPath)) {
+        const imageBuffer = readFileSync(wallpaperPath)
+        const base64 = imageBuffer.toString('base64')
+        const ext = extractFileExt(wallpaperPath).toLowerCase()
+        const mimeType = getMimeType(ext)
+        return `data:${mimeType};base64,${base64}`
+      }
+      return null
+    } catch (error) {
+      console.error('获取桌面背景失败:', error)
+      return null
+    }
   })
 }
 
@@ -62,4 +79,41 @@ async function getIconDataUrl(iconTargetPath: string) {
   } catch {
     return ''
   }
+}
+
+// 获取桌面背景路径
+async function getWallpaperPath(): Promise<string | null> {
+  try {
+    const wallpaper = await getRegistryValue('HKCU', '\\Control Panel\\Desktop', 'WallPaper')
+    if (wallpaper && wallpaper !== '(default)' && existsSync(wallpaper)) {
+      return wallpaper
+    }
+
+    const backgroundType = await getRegistryValue('HKCU', '\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Wallpapers', 'BackgroundType')
+    if (backgroundType === '1') {
+      const backgroundPath = await getRegistryValue('HKCU', '\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Wallpapers', 'BackgroundImagePath')
+      if (backgroundPath && backgroundPath !== '(default)' && existsSync(backgroundPath)) {
+        return backgroundPath
+      }
+    }
+    return null
+  } catch (error) {
+
+    return null
+  }
+}
+
+// 根据文件扩展名获取 MIME 类型
+function getMimeType(ext: string): string {
+  const mimeTypes: { [key: string]: string } = {
+    'jpg': 'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'png': 'image/png',
+    'bmp': 'image/bmp',
+    'gif': 'image/gif',
+    'webp': 'image/webp',
+    'tiff': 'image/tiff',
+    'tif': 'image/tiff'
+  }
+  return mimeTypes[ext] || 'image/jpeg'
 }

@@ -1,5 +1,5 @@
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { Rnd } from 'react-rnd'
 import { DesktopFile } from '~/desktopData'
 import { FileIcon } from './FileIcon'
@@ -21,11 +21,16 @@ export interface BoxConfig {
 export function FencesBox(props: {
   boxConfig: BoxConfig
   moveFile: (from: number, to: number) => void
-  onBoxChange: (id: string, position: BoxPosition) => { x: number; y: number }
+  onBoxChange: (id: string, position: BoxPosition) => BoxPosition
   onBoxStop: () => void
 }) {
   const { boxConfig } = props
   const rndRef = useRef<Rnd>(null)
+
+  useEffect(() => {
+    rndRef.current?.updatePosition({ x: boxConfig.position.x, y: boxConfig.position.y })
+    rndRef.current?.updateSize({ width: boxConfig.position.width, height: boxConfig.position.height })
+  }, [boxConfig.position])
 
   return (
     <Rnd
@@ -47,22 +52,17 @@ export function FencesBox(props: {
       }}
       dragHandleClassName="fencesbox-drag-handle"
       onDrag={(e, data) => {
-        boxConfig.position = { ...boxConfig.position, x: data.x, y: data.y }
-        const { x, y } = props.onBoxChange(boxConfig.id, boxConfig.position)
-        boxConfig.position = { ...boxConfig.position, x, y }
-
-        rndRef.current?.updatePosition({ x, y })
+        const newPosition = { ...boxConfig.position, x: data.x, y: data.y }
+        boxConfig.position = props.onBoxChange(boxConfig.id, newPosition)
       }}
       onResize={(e, dirction, elementRef, delta, position) => {
-        boxConfig.position = {
+        const newPosition = {
           ...position,
           width: elementRef.offsetWidth,
           height: elementRef.offsetHeight
         }
-        const { x, y } = props.onBoxChange(boxConfig.id, boxConfig.position)
 
-        boxConfig.position = { ...boxConfig.position, x, y }
-        rndRef.current?.updatePosition({ x, y })
+        boxConfig.position = props.onBoxChange(boxConfig.id, newPosition)
       }}
       onDragStop={props.onBoxStop}
       onResizeStop={props.onBoxStop}

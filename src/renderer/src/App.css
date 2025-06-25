@@ -118,11 +118,3 @@
     @apply bg-background text-foreground;
   }
 }
-
-body,
-#root {
-  background: transparent !important;
-  /* background: var(--background);
-  background-image: url('@/assets/wavy-lines.svg');
-  background-size: cover; */
-}

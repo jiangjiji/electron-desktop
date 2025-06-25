@@ -3,6 +3,7 @@ import { DesktopFile } from '~/desktopData'
 
 interface DesktopApi {
   getDesktopFiles: () => Promise<DesktopFile[]>
+  getDesktopBackground: () => Promise<string | null>
 }
 
 declare global {

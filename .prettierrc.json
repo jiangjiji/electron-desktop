@@ -3,10 +3,14 @@
   "semi": false,
   "printWidth": 100,
   "trailingComma": "none",
-  	"plugins": [
-		"prettier-plugin-organize-imports",
-		"prettier-plugin-packagejson",
-		"prettier-plugin-css-order",
+  "plugins": [
+    "prettier-plugin-organize-imports",
+    "prettier-plugin-packagejson",
+    "prettier-plugin-css-order",
     "prettier-plugin-tailwindcss"
-	]
+  ],
+  "tailwindFunctions": [
+    "cn",
+    "clsx"
+  ]
 }

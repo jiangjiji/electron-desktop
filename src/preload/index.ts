@@ -3,7 +3,8 @@ import { contextBridge, ipcRenderer } from 'electron'
 
 // Custom APIs for renderer
 const api = {
-  getDesktopFiles: () => ipcRenderer.invoke('getDesktopFiles')
+  getDesktopFiles: () => ipcRenderer.invoke('getDesktopFiles'),
+  getDesktopBackground: () => ipcRenderer.invoke('getDesktopBackground'),
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to
