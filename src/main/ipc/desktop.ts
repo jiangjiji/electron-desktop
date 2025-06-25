@@ -1,5 +1,5 @@
-import { app, ipcMain, shell} from 'electron'
-import { readdirSync, statSync, readFileSync, existsSync } from 'node:fs'
+import { app, ipcMain, shell } from 'electron'
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { DesktopFile } from '~/desktopData'
 import { extractFileExt, getRegistryValue } from '../common/sysUtils'
@@ -45,13 +45,22 @@ async function searchDesktopFile(desktopPath: string) {
       const ext = extractFileExt(name)
       const iconTargetPath = getInkTargetPath(fullPath, ext)
       const iconDataUrl = await getIconDataUrl(iconTargetPath)
+
+      const fileIcon = iconDataUrl
+        ? iconDataUrl
+        : stat.isFile()
+          ? '📁'
+          : ext === 'lnk'
+            ? '🔗'
+            : '📄'
+
       files.push({
         name,
         path: fullPath,
         isDirectory: stat.isDirectory(),
         isFile: stat.isFile(),
         ext,
-        icon: iconDataUrl
+        icon: fileIcon
       })
     }
   } catch (e) {
@@ -89,16 +98,23 @@ async function getWallpaperPath(): Promise<string | null> {
       return wallpaper
     }
 
-    const backgroundType = await getRegistryValue('HKCU', '\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Wallpapers', 'BackgroundType')
+    const backgroundType = await getRegistryValue(
+      'HKCU',
+      '\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Wallpapers',
+      'BackgroundType'
+    )
     if (backgroundType === '1') {
-      const backgroundPath = await getRegistryValue('HKCU', '\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Wallpapers', 'BackgroundImagePath')
+      const backgroundPath = await getRegistryValue(
+        'HKCU',
+        '\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Wallpapers',
+        'BackgroundImagePath'
+      )
       if (backgroundPath && backgroundPath !== '(default)' && existsSync(backgroundPath)) {
         return backgroundPath
       }
     }
     return null
   } catch (error) {
-
     return null
   }
 }
@@ -106,14 +122,14 @@ async function getWallpaperPath(): Promise<string | null> {
 // 根据文件扩展名获取 MIME 类型
 function getMimeType(ext: string): string {
   const mimeTypes: { [key: string]: string } = {
-    'jpg': 'image/jpeg',
-    'jpeg': 'image/jpeg',
-    'png': 'image/png',
-    'bmp': 'image/bmp',
-    'gif': 'image/gif',
-    'webp': 'image/webp',
-    'tiff': 'image/tiff',
-    'tif': 'image/tiff'
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    png: 'image/png',
+    bmp: 'image/bmp',
+    gif: 'image/gif',
+    webp: 'image/webp',
+    tiff: 'image/tiff',
+    tif: 'image/tiff'
   }
   return mimeTypes[ext] || 'image/jpeg'
 }

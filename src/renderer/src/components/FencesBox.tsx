@@ -1,5 +1,6 @@
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { useEffect, useRef } from 'react'
+import { rectSortingStrategy, SortableContext } from '@dnd-kit/sortable'
+import { useEffect, useRef, useState } from 'react'
 import { Rnd } from 'react-rnd'
 import { DesktopFile } from '~/desktopData'
 import { FileIcon } from './FileIcon'
@@ -20,17 +21,44 @@ export interface BoxConfig {
 
 export function FencesBox(props: {
   boxConfig: BoxConfig
-  moveFile: (from: number, to: number) => void
   onBoxChange: (id: string, position: BoxPosition) => BoxPosition
   onBoxStop: () => void
 }) {
   const { boxConfig } = props
   const rndRef = useRef<Rnd>(null)
+  const [selectedFiles, setSelectedFiles] = useState<DesktopFile[]>([])
 
   useEffect(() => {
     rndRef.current?.updatePosition({ x: boxConfig.position.x, y: boxConfig.position.y })
-    rndRef.current?.updateSize({ width: boxConfig.position.width, height: boxConfig.position.height })
+    rndRef.current?.updateSize({
+      width: boxConfig.position.width,
+      height: boxConfig.position.height
+    })
   }, [boxConfig.position])
+
+  const handleFileSelect = (file: DesktopFile, isCtrlPressed: boolean) => {
+    setSelectedFiles((prev) => {
+      const newSelected: DesktopFile[] = []
+
+      if (isCtrlPressed) {
+        newSelected.push(...prev)
+        // Ctrl+点击：切换选中状态
+        if (!newSelected.includes(file)) {
+          newSelected.push(file)
+        }
+      } else {
+        // 普通点击：清除其他选中，只选中当前文件
+        newSelected.push(file)
+      }
+
+      return newSelected
+    })
+  }
+
+  const handleBoxClick = () => {
+    // 点击空白区域时清除所有选中
+    setSelectedFiles([])
+  }
 
   return (
     <Rnd
@@ -67,16 +95,35 @@ export function FencesBox(props: {
       onDragStop={props.onBoxStop}
       onResizeStop={props.onBoxStop}
     >
-      <div className="flex h-full flex-col overflow-hidden rounded-xl bg-black/15 shadow backdrop-blur-lg">
+      <div
+        className="flex h-full flex-col overflow-hidden rounded-xl bg-black/15 shadow backdrop-blur-lg"
+        onClick={handleBoxClick}
+      >
         <div className="fencesbox-drag-handle flex cursor-move items-center justify-center bg-black/30 p-2 font-bold text-white select-none">
           {boxConfig.name}
         </div>
+
         <ScrollArea className="flex-grow overflow-auto">
-          <div className="flex h-full flex-wrap gap-2">
+          <SortableContext
+            items={boxConfig.files.flatMap((_, index) => `${boxConfig.id}-${index}`)}
+            strategy={rectSortingStrategy}
+          >
             {boxConfig.files.map((file, idx) => (
-              <FileIcon key={file.path} file={file} index={idx} moveFile={props.moveFile} />
+              <FileIcon
+                key={file.path}
+                file={file}
+                index={idx}
+                isSelected={selectedFiles.includes(file)}
+                containerWidth={boxConfig.position.width}
+                groupId={boxConfig.id}
+                onSelect={(e) => {
+                  // 检测是否按下了 Ctrl 键
+                  const isCtrlPressed = e?.ctrlKey || false
+                  handleFileSelect(file, isCtrlPressed)
+                }}
+              />
             ))}
-          </div>
+          </SortableContext>
         </ScrollArea>
       </div>
     </Rnd>

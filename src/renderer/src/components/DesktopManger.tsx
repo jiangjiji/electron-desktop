@@ -1,7 +1,17 @@
 import { BoxPosition, FencesBox, type BoxConfig } from '@/components/FencesBox'
+import {
+  closestCenter,
+  DndContext,
+  DragEndEvent,
+  DragOverEvent,
+  DragOverlay,
+  DragStartEvent,
+  PointerSensor,
+  useSensor,
+  useSensors
+} from '@dnd-kit/core'
 import { useEffect, useRef, useState } from 'react'
-import { DndProvider } from 'react-dnd'
-import { HTML5Backend } from 'react-dnd-html5-backend'
+import { DesktopFile } from '~/desktopData'
 
 // 对齐辅助线的吸附距离
 const SNAP_THRESHOLD = 4
@@ -12,42 +22,106 @@ interface GuideLine {
   position: number
 }
 
-export function DesktopManger() {
-  // box 配置
-  const [boxConfigs, setBoxConfigs] = useState<BoxConfig[]>([])
+function IconManager({
+  children,
+  boxConfigs,
+  onMoveFile
+}: {
+  children: React.ReactNode
+  boxConfigs: BoxConfig[]
+  onMoveFile: (fromGroupId: string, fromIndex: number, toGroupId: string, toIndex: number) => void
+}) {
+  // 拖拽中的文件
+  const [activeFile, setActiveFile] = useState<DesktopFile | null>(null)
+
+  // 配置拖拽传感器
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8
+      }
+    })
+  )
+
+  // 拖拽开始
+  const handleDragStart = (event: DragStartEvent) => {
+    const activeId = event.active.id as string
+
+    // 获取拖拽的文件信息
+    const [groupId, index] = activeId.split('-')
+    const box = boxConfigs.find((b) => b.id === groupId)
+    if (box && box.files[parseInt(index)]) {
+      setActiveFile(box.files[parseInt(index)])
+    }
+  }
+
+  // 拖拽结束
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+
+    if (over && active.id !== over.id) {
+      const activeId = active.id as string
+      const overId = over.id as string
+
+      // 解析拖拽项和目标项的信息
+      const [activeGroupId, activeIndex] = activeId.split('-')
+      const [overGroupId, overIndex] = overId.split('-')
+
+      if (activeGroupId && overGroupId && activeIndex && overIndex) {
+        // 执行文件移动操作
+        onMoveFile(activeGroupId, parseInt(activeIndex), overGroupId, parseInt(overIndex))
+      }
+    }
+
+    setActiveFile(null)
+  }
+
+  // 拖拽悬停
+  const handleDragOver = (event: DragOverEvent) => {
+    const { active, over } = event
+
+    if (over && active.id !== over.id) {
+      const activeId = active.id as string
+      const overId = over.id as string
+
+      // 解析拖拽项和目标项的信息
+      const [activeGroupId, activeIndex] = activeId.split('-')
+      const [overGroupId, overIndex] = overId.split('-')
+
+      if (activeGroupId && overGroupId && activeIndex && overIndex) {
+        // 可以在这里添加实时预览逻辑
+      }
+    }
+  }
+
+  return (
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onDragOver={handleDragOver}
+    >
+      {children}
+      <DragOverlay>
+        {activeFile ? (
+          <div className="flex w-20 cursor-pointer flex-col items-center rounded border-2 border-blue-500 bg-blue-500/30 p-1 shadow-lg">
+            <img src={activeFile.icon} alt="icon" className="mb-1 h-8 w-8" />
+            <span className="text-center text-xs font-medium break-all text-blue-100">
+              {activeFile.name}
+            </span>
+          </div>
+        ) : null}
+      </DragOverlay>
+    </DndContext>
+  )
+}
+
+function BoxManager({ boxConfigs }: { boxConfigs: BoxConfig[] }) {
   // 当前辅助线
   const [guideLines, setGuideLines] = useState<GuideLine[]>([])
   // 当前正在拖动/缩放的box id
   const draggingId = useRef<string | null>(null)
-  // 桌面背景
-  const [desktopBackground, setDesktopBackground] = useState<string | null>(null)
-
-  useEffect(() => {
-    // 获取桌面文件
-    window.api.getDesktopFiles().then((files) => {
-      const exeFiles = files.filter((f) => ['exe', 'lnk'].includes(f.ext))
-      const otherFiles = files.filter((f) => !['exe', 'lnk'].includes(f.ext))
-      setBoxConfigs([
-        {
-          id: 'exe',
-          name: '程序',
-          files: exeFiles,
-          position: { x: 100, y: 100, width: 380, height: 220 }
-        },
-        {
-          id: 'others',
-          name: '默认分组',
-          files: otherFiles,
-          position: { x: 520, y: 100, width: 380, height: 220 }
-        }
-      ])
-    })
-
-    // 获取桌面背景
-    window.api.getDesktopBackground().then((background) => {
-      setDesktopBackground(background)
-    })
-  }, [])
 
   // 计算所有对齐线（含窗口边缘）
   function getAllGuides(currentId: string, currentPosition: BoxPosition) {
@@ -244,17 +318,89 @@ export function DesktopManger() {
       )
     )
   }
+  return (
+    <>
+      {boxConfigs.map((box) => (
+        <FencesBox
+          key={box.id}
+          boxConfig={box}
+          onBoxChange={handleBoxChange}
+          onBoxStop={handleBoxStop}
+        />
+      ))}
+      {renderGuides()}
+    </>
+  )
+}
 
-  // 只实现组内拖拽
-  const moveFile = (from: number, to: number) => {
-    setBoxConfigs((prev) => {
-      const group = prev[0]
-      const files = [...group.files]
-      const [moved] = files.splice(from, 1)
-      files.splice(to, 0, moved)
-      return [{ ...group, files }]
+export function DesktopManger() {
+  // box 配置
+  const [boxConfigs, setBoxConfigs] = useState<BoxConfig[]>([])
+
+  // 桌面背景
+  const [desktopBackground, setDesktopBackground] = useState<string | null>(null)
+
+  // 文件移动函数
+  const moveFile = (fromGroupId: string, fromIndex: number, toGroupId: string, toIndex: number) => {
+    if (fromGroupId === toGroupId && fromIndex === toIndex) return
+
+    setBoxConfigs((config) => {
+      // 找到源分组和目标分组
+      const fromBoxIndex = config.findIndex((box) => box.id === fromGroupId)
+      const toBoxIndex = config.findIndex((box) => box.id === toGroupId)
+
+      if (fromBoxIndex === -1 || toBoxIndex === -1) {
+        return config
+      }
+
+      // 深拷贝分组，确保文件数组也被正确拷贝
+
+      const fromBoxFiles = [...config[fromBoxIndex].files]
+      const toBoxFiles = fromGroupId === toGroupId ? fromBoxFiles : [...config[toBoxIndex].files]
+
+      // 从源分组中移除文件
+      const [movedFile] = fromBoxFiles.splice(fromIndex, 1)
+      if (!movedFile) {
+        return config
+      }
+
+      // 将文件插入到目标分组
+      toBoxFiles.splice(toIndex, 0, movedFile)
+
+      // 更新配置
+      config[fromBoxIndex].files = fromBoxFiles
+      config[toBoxIndex].files = toBoxFiles
+
+      return config
     })
   }
+
+  useEffect(() => {
+    // 获取桌面文件
+    window.api.getDesktopFiles().then((files) => {
+      const exeFiles = files.filter((f) => ['exe', 'lnk'].includes(f.ext))
+      const otherFiles = files.filter((f) => !['exe', 'lnk'].includes(f.ext))
+      setBoxConfigs([
+        {
+          id: 'exe',
+          name: '程序',
+          files: exeFiles,
+          position: { x: 100, y: 100, width: 380, height: 220 }
+        },
+        {
+          id: 'others',
+          name: '默认分组',
+          files: otherFiles,
+          position: { x: 520, y: 100, width: 380, height: 220 }
+        }
+      ])
+    })
+
+    // 获取桌面背景
+    window.api.getDesktopBackground().then((background) => {
+      setDesktopBackground(background)
+    })
+  }, [])
 
   return (
     <div
@@ -266,18 +412,9 @@ export function DesktopManger() {
         backgroundRepeat: 'no-repeat'
       }}
     >
-      <DndProvider backend={HTML5Backend}>
-        {boxConfigs.map((box) => (
-          <FencesBox
-            key={box.id}
-            boxConfig={box}
-            moveFile={moveFile}
-            onBoxChange={handleBoxChange}
-            onBoxStop={handleBoxStop}
-          />
-        ))}
-        {renderGuides()}
-      </DndProvider>
+      <IconManager boxConfigs={boxConfigs} onMoveFile={moveFile}>
+        <BoxManager boxConfigs={boxConfigs} />
+      </IconManager>
     </div>
   )
 }
